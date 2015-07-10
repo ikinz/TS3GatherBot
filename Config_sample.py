@@ -24,3 +24,7 @@ maps = [
     "de_cache",
     "de_overpass"
 ]
+
+admins = {
+    "<uid>": "x"
+}

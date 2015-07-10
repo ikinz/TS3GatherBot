@@ -25,7 +25,7 @@ __status__      = 'Production'
 """
 import threading
 import telnetlib
-from Config import config, maps
+from Config import config, maps, admins
 from queue import Queue
 
 class BotThread(threading.Thread):
@@ -37,8 +37,16 @@ class BotThread(threading.Thread):
             "!stop": self.cmd_stop,
             "!maps": self.cmd_maps,
             "!ready": self.cmd_ready,
+            "!r": self.cmd_ready,
+            "!gaben": self.cmd_ready,
             "!unready": self.cmd_unready,
-            "!help": self.cmd_help
+            "!notready": self.cmd_unready,
+            "!nr": self.cmd_unready,
+            "!ur": self.cmd_unready,
+            "!help": self.cmd_help,
+            "!h": self.cmd_help,
+
+            "!activate": self.cmd_activate
         }
 
         self.name = name
@@ -50,17 +58,19 @@ class BotThread(threading.Thread):
 
     def run(self):
         self.telnet = self.initBot()
-        self.botId = self.getBotId()
+        self.botId = self.getPlayerId(self.name)
         self.channel = self.moveToChannel(self.getChannelId(self.channel))
 
         # Print Welcome message
-        self.sendChannelMessage("\\n[b]The GatherBot is currently running[/b]\\n\\n"
-                                "[color=green]!start[/color] : [i]Starts a gather[/i]\\n"
-                                "[color=green]!stop[/color] : [i]Stops the gather[/i]\\n\\n"
-                                "[color=green]!maps[/color] : [i]Set the amount of maps to play (default=bo3)[/i]\\n"
-                                "[color=green]!ready[/color] : [i]Sets you as ready[/i]\\n"
-                                "[color=green]!unready[/color] : [i]Sets you as unready[/i]\\n\\n"
-                                "[color=red]Please type !help for a full list of commands[/color]")
+        self.sendChannelMessage(
+            "\\n[b]The GatherBot is currently running[/b]\\n\\n"
+            "[color=green]!start[/color] : [i]Starts a gather[/i]\\n"
+            "[color=green]!stop[/color] : [i]Stops the gather[/i]\\n\\n"
+            "[color=green]!maps[/color] : [i]Set the amount of maps to play (default=bo3)[/i]\\n"
+            "[color=green]!ready[/color] : [i]Sets you as ready[/i]\\n"
+            "[color=green]!unready[/color] : [i]Sets you as unready[/i]\\n\\n"
+            "[color=red]Please type !help for a full list of commands[/color]"
+        )
 
         # While an exit command has not been issued
         ex = False
@@ -110,8 +120,8 @@ class BotThread(threading.Thread):
     """
         Get the client ID for this bot
     """
-    def getBotId(self):
-        self.telnet.write(self.getenc("clientfind pattern=%s\n" % (self.name)))
+    def getPlayerId(self, name):
+        self.telnet.write(self.getenc("clientfind pattern=%s\n" % name))
         botstr = str(self.telnet.read_until(self.getenc("msg=ok")))
         botstr = botstr.split()[0]
         return int(botstr.split("=")[1])
@@ -151,19 +161,34 @@ class BotThread(threading.Thread):
         self.telnet.write(self.getenc("sendtextmessage targetmode=2 msg=%s\n" % (msg)))
         self.telnet.read_until(self.getenc("msg=ok"))
 
+    def getPlayersInLobby(self):
+        pass
+
     def execCommand(self, cmd):
+        i1 = cmd.index("invokeruid")
+        i1 = cmd.index("=", i1)
+        i2 = cmd.index("\\n", i1)
+        user = cmd[i1 + 1:i2]
         cmd = [x.split("=") for x in cmd.split() if len(x.split("=")) > 1 and not x.__contains__("msg=ok")]
         d = {}
         for it in cmd:
             d[it[0]] = it[1]
         if d['msg'] in self.commands:
-            self.commands[d['msg']](d['invokername'], d['msg'])
+            self.commands[d['msg']](user, d['msg'])
 
     def cmd_start(self, user, data):
-        pass
+        global gatherRunning
+        if not gatherRunning:
+            gatherRunning = True
+        else:
+            self.sendChannelMessage("[color=red]A gather is already running![/color]")
 
     def cmd_stop(self, user, data):
-        pass
+        global gatherRunning
+        if gatherRunning:
+            gatherRunning = False
+        else:
+            self.sendChannelMessage("[color=red]No gather currently running![/color]")
 
     def cmd_maps(self, user, data):
         pass
@@ -175,15 +200,25 @@ class BotThread(threading.Thread):
         pass
 
     def cmd_help(self, user, data):
-        self.sendChannelMessage(
-            "[b]Available commands are:[/b]\\n"
-            "[color=green]!start[/color] : [i]Starts a gather[/i]\\n"
-            "[color=green]!stop[/color] : [i]Stops the gather[/i]\\n\\n"
-            "[color=green]!maps[/color] : [i]Set the amount of maps to play (default=bo3)[/i]\\n"
-            "[color=green]!ready[/color] : [i]Sets you as ready[/i]\\n"
-            "[color=green]!unready[/color] : [i]Sets you as unready[/i]\\n\\n"
-            "[color=green]!help[/color] : [i]List all available commands[/i]\\n"
-        )
+        string = "\\n[b]Available commands are:[/b]\\n" \
+            "[color=grey]!<cmd> (<aliases>) : [i]<Description>[/i][/color]\\n\\n" \
+            "[color=green]!start[/color] : [i]Starts a gather[/i]\\n" \
+            "[color=green]!stop[/color] : [i]Stops the gather[/i]\\n\\n" \
+            "[color=green]!maps[/color] : [i]Set the amount of maps to play (default=bo3)[/i]\\n" \
+            "[color=green]!ready (!r, !gaben)[/color] : [i]Sets you as ready[/i]\\n" \
+            "[color=green]!unready (!notready, !nr, !ur)[/color] : [i]Sets you as unready[/i]\\n\\n" \
+            "[color=green]!help (!h)[/color] : [i]List all available commands[/i]\\n"
+
+        if user in admins.keys():
+            string += "\\n\\n" \
+                "[b]Admin Commands:[/b]\\n" \
+                "[color=grey]!<cmd> (<aliases>) : [i]<Description>[/i][/color]\\n\\n" \
+                "[color=green]!activate[/color] : [i]Toggle this bot[/i]\\n"
+
+        self.sendChannelMessage(string)
+
+    def cmd_activate(self, user, data):
+        pass
 
     def getenc(self, str):
         return str.encode('ascii')
@@ -192,6 +227,8 @@ class BotThread(threading.Thread):
     Init the app
 """
 players = []
+gatherRunning = False
+vetoSystem = "bo3"
 
 # Create lists with all the bots and their Queues
 cmdToThread = [
