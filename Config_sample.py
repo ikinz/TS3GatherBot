@@ -24,5 +24,3 @@ maps = [
     "de_cache",
     "de_overpass"
 ]
-
-https://github.com/ikinz/TS3GatherBot.git
