@@ -25,7 +25,7 @@ __status__      = 'Production'
 """
 import threading
 import telnetlib
-from Config import config, maps, admins
+from Config import config, maps, admins, vetoprocesses
 from queue import Queue
 from Player import Player
 
@@ -177,8 +177,9 @@ class BotThread(threading.Thread):
         for it in cmd:
             d[it[0]] = it[1]
         global active
-        if (d['msg'] in self.commands and active) or d['msg'] == '!activate':
-            self.commands[d['msg']](userid, d['invokername'], d['msg'])
+        cmdsp = d['msg'].split("\\\\s")
+        if (cmdsp[0] in self.commands and active) or d['msg'] == '!activate':
+            self.commands[cmdsp[0]](userid, d['invokername'], d['msg'])
 
     def cmd_start(self, userid, user, data):
         global gatherRunning
@@ -193,7 +194,12 @@ class BotThread(threading.Thread):
 
     def cmd_stop(self, userid, user, data):
         global gatherRunning
-        if gatherRunning:
+        global players
+        p = None
+        for x in players:
+            if x.uid == userid:
+                p = x
+        if gatherRunning and p.isMod:
             gatherRunning = False
             global players
             players = []
@@ -206,10 +212,29 @@ class BotThread(threading.Thread):
         else:
             self.sendChannelMessage("[color=red]No gather currently running![/color]")
 
+    """
+        Change the amount of maps that will be played
+        Only available to game mods!
+    """
     def cmd_maps(self, userid, user, data):
         global gatherRunning
         if gatherRunning:
-            pass
+            data = data.split("\\\\s")
+            global players
+            p = None
+            for x in players:
+                if x.uid == userid:
+                    p = x
+            if len(data) > 1 and p.isMod:
+                data = data[1].lower()
+                if data in vetoprocesses:
+                    global vetoSystem
+                    vetoSystem = data
+                    self.sendChannelMessage("[color=green]Game changed to %s![/color]" % data)
+                else:
+                    self.sendChannelMessage("[color=red]%s not supported![/color]" % data)
+            else:
+                self.sendChannelMessage("[color=red]You didn't enter a value or you're not the game mod![/color]" % data)
         else:
             self.sendChannelMessage("[color=red]No gather currently running![/color]")
 
@@ -233,13 +258,22 @@ class BotThread(threading.Thread):
 
     def start_gather(self):
         global players
-        if len(players) == 10:
+        if len(players) == 4:
             self.sendChannelMessage("[color=green]10 players are ready! Setting up teams![/color]")
             l = players[:]
             import random
             random.shuffle(l)
-            team1 = l[:5]
-            team2 = l[5:]
+            team1 = l[:2]
+            team2 = l[2:]
+
+            plrs = ["clid=" + str(self.getPlayerId(x.name)) for x in team1]
+            plrs = "|".join(plrs)
+            self.telnet.write(self.getenc("clientmove %s cid=%s\n" % (plrs, self.getChannelId(config['g1']))))
+            self.telnet.read_until(self.getenc("msg=ok"))
+            plrs = ["clid=" + str(self.getPlayerId(x.name)) for x in team2]
+            plrs = "|".join(plrs)
+            self.telnet.write(self.getenc("clientmove %s cid=%s\n" % (plrs, self.getChannelId(config['g2']))))
+            self.telnet.read_until(self.getenc("msg=ok"))
 
     def cmd_unready(self, userid, user, data):
         global gatherRunning
