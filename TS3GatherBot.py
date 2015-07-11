@@ -33,6 +33,7 @@ class BotThread(threading.Thread):
         super(BotThread, self).__init__()
 
         self.commands = {
+            # User commands
             "!start": self.cmd_start,
             "!stop": self.cmd_stop,
             "!maps": self.cmd_maps,
@@ -46,6 +47,7 @@ class BotThread(threading.Thread):
             "!help": self.cmd_help,
             "!h": self.cmd_help,
 
+            # Admin commands
             "!activate": self.cmd_activate
         }
 
@@ -173,7 +175,8 @@ class BotThread(threading.Thread):
         d = {}
         for it in cmd:
             d[it[0]] = it[1]
-        if d['msg'] in self.commands:
+        global active
+        if (d['msg'] in self.commands and active) or d['msg'] == '!activate':
             self.commands[d['msg']](user, d['msg'])
 
     def cmd_start(self, user, data):
@@ -218,7 +221,15 @@ class BotThread(threading.Thread):
         self.sendChannelMessage(string)
 
     def cmd_activate(self, user, data):
-        pass
+        if user in admins:
+            global active
+            active = not active
+            if active:
+                self.sendChannelMessage("[color=green]GatherBot has been activated[/color]")
+            else:
+                self.sendChannelMessage("[color=red]GatherBot has been deactivated[/color]")
+        else:
+            self.sendChannelMessage("[color=red]You're not an admin, GTFO![/color]")
 
     def getenc(self, str):
         return str.encode('ascii')
@@ -226,6 +237,8 @@ class BotThread(threading.Thread):
 """
     Init the app
 """
+active = True
+
 players = []
 gatherRunning = False
 vetoSystem = "bo3"
