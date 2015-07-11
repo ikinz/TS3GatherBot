@@ -27,6 +27,7 @@ import threading
 import telnetlib
 from Config import config, maps, admins
 from queue import Queue
+from Player import Player
 
 class BotThread(threading.Thread):
     def __init__(self, name, password, channel, index):
@@ -170,39 +171,90 @@ class BotThread(threading.Thread):
         i1 = cmd.index("invokeruid")
         i1 = cmd.index("=", i1)
         i2 = cmd.index("\\n", i1)
-        user = cmd[i1 + 1:i2]
+        userid = cmd[i1 + 1:i2]
         cmd = [x.split("=") for x in cmd.split() if len(x.split("=")) > 1 and not x.__contains__("msg=ok")]
         d = {}
         for it in cmd:
             d[it[0]] = it[1]
         global active
         if (d['msg'] in self.commands and active) or d['msg'] == '!activate':
-            self.commands[d['msg']](user, d['msg'])
+            self.commands[d['msg']](userid, d['invokername'], d['msg'])
 
-    def cmd_start(self, user, data):
+    def cmd_start(self, userid, user, data):
         global gatherRunning
         if not gatherRunning:
             gatherRunning = True
+            global players
+            players.append(Player(user, userid, True))
+
+            self.sendChannelMessage("[color=green]A gather has been started by %s![/color]" % user)
         else:
             self.sendChannelMessage("[color=red]A gather is already running![/color]")
 
-    def cmd_stop(self, user, data):
+    def cmd_stop(self, userid, user, data):
         global gatherRunning
         if gatherRunning:
             gatherRunning = False
+            global players
+            players = []
+            global vetoSystem
+            vetoSystem = "bo3"
+
+            # Move all players to Lobby
+
+            self.sendChannelMessage("[color=red]Gather has been stopped![/color]")
         else:
             self.sendChannelMessage("[color=red]No gather currently running![/color]")
 
-    def cmd_maps(self, user, data):
-        pass
+    def cmd_maps(self, userid, user, data):
+        global gatherRunning
+        if gatherRunning:
+            pass
+        else:
+            self.sendChannelMessage("[color=red]No gather currently running![/color]")
 
-    def cmd_ready(self, user, data):
-        pass
+    def cmd_ready(self, userid, user, data):
+        global gatherRunning
+        if gatherRunning:
+            global players
+            alreadyReady = False
+            for p in players:
+                if p.uid == userid:
+                    alreadyReady = True
 
-    def cmd_unready(self, user, data):
-        pass
+            if not alreadyReady:
+                players.append(Player(user, userid))
+                self.sendChannelMessage("[color=green]%s is ready![/color]" % user)
+                self.start_gather()
+            else:
+                self.sendChannelMessage("[color=red]You're already ready![/color]")
+        else:
+            self.sendChannelMessage("[color=red]No gather currently running![/color]")
 
-    def cmd_help(self, user, data):
+    def start_gather(self):
+        global players
+        if len(players) == 10:
+            self.sendChannelMessage("[color=green]10 players are ready! Setting up teams![/color]")
+            l = players[:]
+            import random
+            random.shuffle(l)
+            team1 = l[:5]
+            team2 = l[5:]
+
+    def cmd_unready(self, userid, user, data):
+        global gatherRunning
+        if gatherRunning:
+            global players
+            for p in players:
+                if p.uid == userid:
+                    if p.isMod:
+                        self.sendChannelMessage("[color=red]You can't leave your own gather. Use !stop to cancel it instead![/color]")
+                    else:
+                        players.remove(p)
+        else:
+            self.sendChannelMessage("[color=red]No gather currently running![/color]")
+
+    def cmd_help(self, userid, user, data):
         string = "\\n[b]Available commands are:[/b]\\n" \
             "[color=grey]!<cmd> (<aliases>) : [i]<Description>[/i][/color]\\n\\n" \
             "[color=green]!start[/color] : [i]Starts a gather[/i]\\n" \
@@ -212,7 +264,7 @@ class BotThread(threading.Thread):
             "[color=green]!unready (!notready, !nr, !ur)[/color] : [i]Sets you as unready[/i]\\n\\n" \
             "[color=green]!help (!h)[/color] : [i]List all available commands[/i]\\n"
 
-        if user in admins.keys():
+        if userid in admins.keys():
             string += "\\n\\n" \
                 "[b]Admin Commands:[/b]\\n" \
                 "[color=grey]!<cmd> (<aliases>) : [i]<Description>[/i][/color]\\n\\n" \
@@ -220,8 +272,8 @@ class BotThread(threading.Thread):
 
         self.sendChannelMessage(string)
 
-    def cmd_activate(self, user, data):
-        if user in admins:
+    def cmd_activate(self, userid, user, data):
+        if userid in admins:
             global active
             active = not active
             if active:
@@ -255,33 +307,3 @@ bots = [
 
 for b in bots:
     b.start()
-
-
-
-
-
-
-
-"""
-def getPlayers():
-    telnet.write(getenc("clientlist\n"))
-    clients = telnet.read_until(getenc("msg=ok"))
-    clients = clients.replace(getenc(" "), getenc("\n"))
-    clients = clients.replace(getenc("\r"), getenc(""))
-    players = clients.split(getenc("|"))
-    for p in players:
-        try:
-            if getenc(config["name"]) in p:
-                players.remove(p)
-            else:
-                p = p.split(getenc("\n"))
-                p = filter(None, p)
-        except IndexError:
-            print("Error")
-    return players
-
-commands = {
-    "!init_gather": init_gather,
-    "!stop": stop_gather
-}
-"""

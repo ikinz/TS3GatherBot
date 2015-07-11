@@ -1,4 +1,7 @@
-__author__ = 'Pierre Schonbeck'
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+__author__ = 'Pierre Schönbeck'
 
 config = {
     "host": "127.0.0.1",
@@ -24,6 +27,14 @@ maps = [
     "de_cache",
     "de_overpass"
 ]
+
+# b = ban, p = pick
+# Last map will always be the remaining one.
+vetoprocesses = {
+    "bo1": "bbbbbb",
+    "bo3": "bbppbb",
+    "bo5": "bbpppp"
+}
 
 admins = {
     "<uid>": "x"
