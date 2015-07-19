@@ -20,6 +20,9 @@ __version__     = '1.0.0'
 __maintainer__  = 'Pierre Schönbeck'
 __status__      = 'Production'
 
+# Amount of players needed to start gather (even number please :))
+PLAYERS_NEEDED = 4
+
 """
     Bot Thread
 """
@@ -201,12 +204,16 @@ class BotThread(threading.Thread):
                 p = x
         if gatherRunning and p.isMod:
             gatherRunning = False
-            global players
-            players = []
             global vetoSystem
             vetoSystem = "bo3"
 
             # Move all players to Lobby
+            plrs = ["clid=" + str(self.getPlayerId(x.name)) for x in players]
+            plrs = "|".join(plrs)
+            self.telnet.write(self.getenc("clientmove %s cid=%s\n" % (plrs, self.getChannelId(config['gl']))))
+            self.telnet.read_until(self.getenc("msg=ok"))
+
+            players = []
 
             self.sendChannelMessage("[color=red]Gather has been stopped![/color]")
         else:
@@ -258,13 +265,13 @@ class BotThread(threading.Thread):
 
     def start_gather(self):
         global players
-        if len(players) == 4:
-            self.sendChannelMessage("[color=green]10 players are ready! Setting up teams![/color]")
+        if len(players) == PLAYERS_NEEDED:
+            self.sendChannelMessage("[color=green]%s players are ready! Setting up teams![/color]" % PLAYERS_NEEDED)
             l = players[:]
             import random
             random.shuffle(l)
-            team1 = l[:2]
-            team2 = l[2:]
+            team1 = l[:int(PLAYERS_NEEDED/2)]
+            team2 = l[int(PLAYERS_NEEDED/2):]
 
             plrs = ["clid=" + str(self.getPlayerId(x.name)) for x in team1]
             plrs = "|".join(plrs)
