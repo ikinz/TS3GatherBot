@@ -81,8 +81,8 @@ class BotThread(threading.Thread):
         # While an exit command has not been issued
         ex = False
         while not ex:
+            # Print queue'd messages
             while not cmdToThread[self.ti].empty():
-                #self.execCommand(cmdToThread[self.ti].get())
                 self.sendChannelMessage(cmdToThread[self.ti].get())
 
             # Read commands from user and execute them
@@ -168,9 +168,9 @@ class BotThread(threading.Thread):
         self.telnet.write(self.getenc("sendtextmessage targetmode=2 msg=%s\n" % (msg)))
         self.telnet.read_until(self.getenc("msg=ok"))
 
-    def getPlayersInLobby(self):
-        pass
-
+    """
+        Parse and execute commands sent by users
+    """
     def execCommand(self, cmd):
         i1 = cmd.index("invokeruid")
         i1 = cmd.index("=", i1)
@@ -185,6 +185,9 @@ class BotThread(threading.Thread):
         if (cmdsp[0] in self.commands and active) or d['msg'] == '!activate':
             self.commands[cmdsp[0]](userid, d['invokername'], d['msg'])
 
+    """
+        Start gather and set mod (the one who started the gather)
+    """
     def cmd_start(self, userid, user, data):
         global gatherRunning
         if not gatherRunning:
@@ -196,6 +199,9 @@ class BotThread(threading.Thread):
         else:
             self.sendChannelMessage("[color=red]A gather is already running![/color]")
 
+    """
+        Stop the gather and move all players to lobby
+    """
     def cmd_stop(self, userid, user, data):
         global gatherRunning
         global players
@@ -246,6 +252,9 @@ class BotThread(threading.Thread):
         else:
             self.sendChannelMessage("[color=red]No gather currently running![/color]")
 
+    """
+        Sets a user as ready
+    """
     def cmd_ready(self, userid, user, data):
         global gatherRunning
         if gatherRunning:
@@ -264,6 +273,9 @@ class BotThread(threading.Thread):
         else:
             self.sendChannelMessage("[color=red]No gather currently running![/color]")
 
+    """
+        Set up teams, move players to correct channel and start veto process
+    """
     def start_gather(self):
         global players
         if len(players) == PLAYERS_NEEDED:
@@ -283,6 +295,9 @@ class BotThread(threading.Thread):
             self.telnet.write(self.getenc("clientmove %s cid=%s\n" % (plrs, self.getChannelId(config['g2']))))
             self.telnet.read_until(self.getenc("msg=ok"))
 
+    """
+        Sets a player as unready
+    """
     def cmd_unready(self, userid, user, data):
         global gatherRunning
         if gatherRunning:
@@ -296,6 +311,9 @@ class BotThread(threading.Thread):
         else:
             self.sendChannelMessage("[color=red]No gather currently running![/color]")
 
+    """
+        Print help text to channel
+    """
     def cmd_help(self, userid, user, data):
         string = "\\n[b]Available commands are:[/b]\\n" \
             "[color=grey]!<cmd> (<aliases>) : [i]<Description>[/i][/color]\\n\\n" \
@@ -314,6 +332,10 @@ class BotThread(threading.Thread):
 
         self.sendChannelMessage(string)
 
+    """
+        Toggle whether the bot is activated
+        Only available to admins!
+    """
     def cmd_activate(self, userid, user, data):
         if userid in admins:
             global active
@@ -325,9 +347,15 @@ class BotThread(threading.Thread):
         else:
             self.sendChannelMessage("[color=red]You're not an admin, GTFO![/color]")
 
+    """
+        Fix encoding of strings
+    """
     def getenc(self, str):
         return str.encode('ascii')
 
+"""
+    Broadcast message to all bots
+"""
 def broadcastMessage(msg):
     for q in cmdToThread:
         q.put(msg)

@@ -3,6 +3,7 @@
 
 __author__ = 'Pierre Schönbeck'
 
+# Bot and channel settings
 config = {
     "host": "127.0.0.1",
     "port": "10011",
@@ -18,6 +19,7 @@ config = {
     "g2": "Gather2"
 }
 
+# Maps available in gathers
 maps = [
     "de_inferno",
     "de_dust2",
@@ -36,6 +38,7 @@ vetoprocesses = {
     "bo5": "bbpppp"
 }
 
+# Teamspeak3 users that will have access to admin commands
 admins = {
     "<uid>": "x"
 }
