@@ -82,7 +82,8 @@ class BotThread(threading.Thread):
         ex = False
         while not ex:
             while not cmdToThread[self.ti].empty():
-                self.execCommand(cmdToThread[self.ti].get())
+                #self.execCommand(cmdToThread[self.ti].get())
+                self.sendChannelMessage(cmdToThread[self.ti].get())
 
             # Read commands from user and execute them
             self.telnet.write(self.getenc("servernotifyregister event=textchannel id=%s\n" % self.channel))
@@ -191,7 +192,7 @@ class BotThread(threading.Thread):
             global players
             players.append(Player(user, userid, True))
 
-            self.sendChannelMessage("[color=green]A gather has been started by %s![/color]" % user)
+            broadcastMessage("[color=green]A gather has been started by %s![/color]" % user)
         else:
             self.sendChannelMessage("[color=red]A gather is already running![/color]")
 
@@ -215,7 +216,7 @@ class BotThread(threading.Thread):
 
             players = []
 
-            self.sendChannelMessage("[color=red]Gather has been stopped![/color]")
+            broadcastMessage("[color=red]Gather has been stopped![/color]")
         else:
             self.sendChannelMessage("[color=red]No gather currently running![/color]")
 
@@ -237,7 +238,7 @@ class BotThread(threading.Thread):
                 if data in vetoprocesses:
                     global vetoSystem
                     vetoSystem = data
-                    self.sendChannelMessage("[color=green]Game changed to %s![/color]" % data)
+                    broadcastMessage("[color=green]Game changed to %s![/color]" % data)
                 else:
                     self.sendChannelMessage("[color=red]%s not supported![/color]" % data)
             else:
@@ -256,7 +257,7 @@ class BotThread(threading.Thread):
 
             if not alreadyReady:
                 players.append(Player(user, userid))
-                self.sendChannelMessage("[color=green]%s is ready![/color]" % user)
+                broadcastMessage("[color=green]%s is ready![/color]" % user)
                 self.start_gather()
             else:
                 self.sendChannelMessage("[color=red]You're already ready![/color]")
@@ -266,7 +267,7 @@ class BotThread(threading.Thread):
     def start_gather(self):
         global players
         if len(players) == PLAYERS_NEEDED:
-            self.sendChannelMessage("[color=green]%s players are ready! Setting up teams![/color]" % PLAYERS_NEEDED)
+            broadcastMessage("[color=green]%s players are ready! Setting up teams![/color]" % PLAYERS_NEEDED)
             l = players[:]
             import random
             random.shuffle(l)
@@ -318,14 +319,18 @@ class BotThread(threading.Thread):
             global active
             active = not active
             if active:
-                self.sendChannelMessage("[color=green]GatherBot has been activated[/color]")
+                broadcastMessage("[color=green]GatherBot has been activated[/color]")
             else:
-                self.sendChannelMessage("[color=red]GatherBot has been deactivated[/color]")
+                broadcastMessage("[color=red]GatherBot has been deactivated[/color]")
         else:
             self.sendChannelMessage("[color=red]You're not an admin, GTFO![/color]")
 
     def getenc(self, str):
         return str.encode('ascii')
+
+def broadcastMessage(msg):
+    for q in cmdToThread:
+        q.put(msg)
 
 """
     Init the app
