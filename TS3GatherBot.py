@@ -20,18 +20,18 @@ __version__     = '1.0.0'
 __maintainer__  = 'Pierre Schönbeck'
 __status__      = 'Production'
 
-# Amount of players needed to start gather (even number please :))
-PLAYERS_NEEDED = 4
-
-"""
-    Bot Thread
-"""
 import threading
 import telnetlib
 from Config import config, maps, admins, vetoprocesses
 from queue import Queue
 from Player import Player
 
+# Amount of players needed to start gather (even number please :))
+PLAYERS_NEEDED = config["players"]
+
+"""
+    Bot Thread
+"""
 class BotThread(threading.Thread):
     def __init__(self, name, password, channel, index):
         super(BotThread, self).__init__()
@@ -218,7 +218,7 @@ class BotThread(threading.Thread):
             plrs = ["clid=" + str(self.getPlayerId(x.name)) for x in players]
             plrs = "|".join(plrs)
             self.telnet.write(self.getenc("clientmove %s cid=%s\n" % (plrs, self.getChannelId(config['gl']))))
-            self.telnet.read_until(self.getenc("msg=ok"))
+            self.telnet.read_until(self.getenc("msg=ok"), 3)
 
             players = []
 

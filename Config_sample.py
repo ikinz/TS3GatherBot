@@ -16,7 +16,8 @@ config = {
     "sid": 1,
     "gl": "Gather-Lobby",
     "g1": "Gather1",
-    "g2": "Gather2"
+    "g2": "Gather2",
+    "players": 10
 }
 
 # Maps available in gathers
