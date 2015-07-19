@@ -296,7 +296,7 @@ class BotThread(threading.Thread):
             self.telnet.read_until(self.getenc("msg=ok"))
 
     """
-        Sets a player as unready
+        Sets a player as not ready
     """
     def cmd_unready(self, userid, user, data):
         global gatherRunning
